@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>線上五子棋對戰 - 首頁</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: #f4e1c1; /* 棋盤風格的木質溫暖色調 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .main-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            border: 2px solid #b5885c;
+        }
+        h1 {
+            color: #4a3319;
+            margin-bottom: 10px;
+            font-size: 28px;
+            letter-spacing: 2px;
+        }
+        .subtitle {
+            color: #8c6239;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .btn {
+            display: block;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: bold;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .btn-login {
+            background-color: #2c3e50; /* 黑棋代表色 */
+            color: #ffffff;
+            border: 2px solid #2c3e50;
+        }
+        .btn-login:hover {
+            background-color: #1a252f;
+        }
+        .btn-register {
+            background-color: #ffffff; /* 白棋代表色 */
+            color: #2c3e50;
+            border: 2px solid #2c3e50;
+        }
+        .btn-register:hover {
+            background-color: #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h1>⚫ 五子棋線上對決 ⚪</h1>
+        <div class="subtitle">邀請好友，即刻展開腦力激盪</div>
+        
+        <div class="btn-group">
+            <a href="login.html" class="btn btn-login">玩家登入</a>
+            <a href="register.html" class="btn btn-register">新玩家註冊</a>
+        </div>
+    </div>
+
+</body>
+</html>

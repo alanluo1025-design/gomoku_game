@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋對戰房間</title>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: #f4e1c1;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .game-container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            border: 2px solid #b5885c;
+            text-align: center;
+            max-width: 95%; /* 隨視窗自動調整，最大不超過 95% */
+            width: 1000px; /* 給予更大的基礎寬度 */
+        }
+        .vs-box {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 15px;
+            background-color: #faf6f0;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e6d7c3;
+        }
+        .player {
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .player.black::before {
+            content: ""; display: inline-block; width: 16px; height: 16px;
+            background-color: #000; border-radius: 50%;
+        }
+        .player.white::before {
+            content: ""; display: inline-block; width: 16px; height: 16px;
+            background-color: #fff; border-radius: 50%; border: 1px solid #000;
+        }
+        .status-bar {
+            font-size: 20px;
+            font-weight: bold;
+            color: #8c6239;
+            margin: 15px 0;
+            padding: 8px;
+            background-color: #fcf8f2;
+            border-radius: 6px;
+        }
+        /* 🎨 核心：CSS 五子棋盤設計 */
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+            width: 525px;
+            height: 525px;
+            background-color: #e4a86a; /* 木質棋盤底色 */
+            border: 2px solid #4a3319;
+            margin: 0 auto;
+            position: relative;
+            padding: 0;
+        }
+        /* 畫出棋盤交叉線 */
+        .cell {
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .cell::before {
+            content: ""; position: absolute; background-color: #4a3319;
+            top: 50%; left: 0; width: 100%; height: 1px; transform: translateY(-50%);
+        }
+        .cell::after {
+            content: ""; position: absolute; background-color: #4a3319;
+            top: 0; left: 50%; width: 1px; height: 100%; transform: translateX(-50%);
+        }
+        /* 棋子樣式 */
+        .stone {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            position: relative;
+            z-index: 10; /* 讓棋子覆蓋在交叉線上方 */
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        .stone.black {
+            background: radial-gradient(circle at 30% 30%, #555, #000 70%);
+        }
+        .stone.white {
+            background: radial-gradient(circle at 30% 30%, #fff, #ccc 70%);
+            border: 1px solid #999;
+        }
+        .btn-quit {
+            margin-top: 20px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* ===== 佈局與聊天室 ===== */
+        .main-content {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap; /* 視窗縮小時允許換行 */
+        }
+        .chat-section {
+            flex: 1; /* 自動填滿剩餘空間，實現縮放 */
+            min-width: 250px; /* 最小寬度限制 */
+            max-width: 450px; /* 最大寬度限制 */
+            border-left: 2px solid #e0d5bd;
+            padding-left: 20px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-section h4 {
+            margin: 0 0 10px;
+            color: #5c3a21;
+            font-size: 15px;
+            font-weight: bold;
+        }
+        .chat-box {
+            height: 400px;
+            overflow-y: auto;
+            background: #faf8f5;
+            border: 1px solid #e0d5bd;
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            scroll-behavior: smooth;
+        }
+        .chat-box::-webkit-scrollbar { width: 6px; }
+        .chat-box::-webkit-scrollbar-thumb { background: #c8b89a; border-radius: 3px; }
+        .chat-msg {
+            display: flex;
+            flex-direction: column;
+            max-width: 78%;
+        }
+        .chat-msg.mine    { align-self: flex-end;   align-items: flex-end;   }
+        .chat-msg.theirs  { align-self: flex-start;  align-items: flex-start; }
+        .chat-bubble {
+            padding: 8px 13px;
+            border-radius: 14px;
+            font-size: 14px;
+            line-height: 1.45;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+        .mine   .chat-bubble {
+            background: linear-gradient(135deg, #8b5a2b, #a57040);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .theirs .chat-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e0d5bd;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .chat-meta {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 3px;
+            padding: 0 4px;
+        }
+        .chat-empty {
+            text-align: center;
+            color: #bbb;
+            font-size: 13px;
+            margin: auto;
+            font-style: italic;
+        }
+        .chat-username {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 3px;
+            padding: 0 4px;
+        }
+        .mine   .chat-username { color: #a57040; text-align: right; }
+        .theirs .chat-username { color: #7a6a58; text-align: left;  }
+        .chat-input-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 9px 13px;
+            border: 1px solid #d0c4a8;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+            resize: none;
+        }
+        .chat-input:focus { border-color: #8b5a2b; }
+        .chat-send-btn {
+            background: linear-gradient(135deg, #8b5a2b, #a57040);
+            color: white;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+            align-self: flex-end;
+        }
+        .chat-send-btn:hover:not(:disabled) { opacity: 0.85; }
+        .chat-send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h3>房間號碼：#{{GAME_ID}}</h3>
+        
+        <div class="vs-box">
+            <div class="player black">黑棋：{{BLACK_NAME}}</div>
+            <div style="font-size: 24px; font-weight: bold; color: #8c6239;">VS</div>
+            <div class="player white">白棋：{{WHITE_NAME}}</div>
+        </div>
+
+        <div class="status-bar" id="statusMessage">正在載入對局狀態...</div>
+
+        <div class="main-content">
+            <!-- ===== 棋盤 ===== -->
+            <div class="chessboard" id="board">
+            </div>
+
+            <!-- ===== 聊天室 ===== -->
+            <div class="chat-section">
+                <h4>💬 對戰聊天室</h4>
+                <div class="chat-box" id="chat-box">
+                    <div class="chat-empty" id="chat-empty">還沒有訊息，說點什麼吧！</div>
+                </div>
+                <div class="chat-input-row">
+                    <textarea class="chat-input" id="chat-input"
+                        placeholder="輸入訊息... (Enter)"
+                        rows="1"
+                        maxlength="200"></textarea>
+                    <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">發送</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-quit" id="btn-quit" onclick="handleQuit()">返回大廳</button>
+    </div>
+
+    <script>
+        // 從後端 PHP 替換過來的變數
+        const gameId      = "{{GAME_ID}}";
+        const myIdentity  = "{{IDENTITY}}";
+        const myUserId    = {{MY_USER_ID}};    // 數字（無引號），用於判斷訊息是否為自己發的
+        const myUsername  = "{{MY_USERNAME}}";
+
+        const boardElement    = document.getElementById('board');
+        const statusMessage   = document.getElementById('statusMessage');
+        let   currentGameStatus = null; // 追蹤最新的遊戲狀態，供認輸按鈕判斷
+        let   displayedMessageIds = new Set(); // 追蹤已顯示的訊息 ID，防止重複
+        let   lastSubmittedMessage = ''; // 防止重複提交相同訊息
+
+        // 1. 初始化網頁：動態畫出 15x15 的格子
+        function createBoard() {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < 15; r++) {
+                for (let c = 0; c < 15; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    // 監聽玩家點擊格子的落子事件
+                    cell.addEventListener('click', () => handleCellClick(r, c));
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // 2. 玩家點擊棋盤落子
+        function handleCellClick(row, col) {
+            if (myIdentity === 'spectator') {
+                alert('您目前是觀戰模式，無法落子。');
+                return;
+            }
+
+            // 透過 Fetch API 傳送落子位置給後端行為處理器 (move.php)
+            fetch('move.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `game_id=${gameId}&row=${row}&col=${col}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    fetchGameState();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(err => console.error('落子通訊錯誤:', err));
+        }
+        function fetchGameState() {
+            fetch(`game_status.php?game_id=${gameId}`)
+            .then(response => response.json())
+            .then(data => {
+                updateStatusMessage(data);
+
+                // 清空目前的棋子，重新畫上最新的棋子狀態
+                const cells = document.querySelectorAll('.cell');
+                cells.forEach(cell => {
+                    const oldStone = cell.querySelector('.stone');
+                    if (oldStone) oldStone.remove();
+
+                    const r = parseInt(cell.dataset.row);
+                    const c = parseInt(cell.dataset.col);
+
+                    if (data.board[r] && data.board[r][c]) {
+                        const stone = document.createElement('div');
+                        stone.className = `stone ${data.board[r][c]}`;
+                        cell.appendChild(stone);
+                    }
+                });
+            })
+            .catch(err => console.error('無法取得遊戲狀態:', err));
+        }
+
+        // 4. 根據後端回傳的遊戲狀態，更換提示文字並追蹤狀態
+        let forfeitAlertShown = false; // 防止重複彈出視窗
+        function updateStatusMessage(data) {
+            currentGameStatus = data.game_status; // 供 handleQuit 使用
+
+            if (data.game_status === 'playing') {
+                if (data.current_turn_identity === myIdentity) {
+                    statusMessage.innerHTML = "🟢 輪到你了！請落子。";
+                    statusMessage.style.color = "#5cb85c";
+                } else {
+                    statusMessage.innerHTML = "⏳ 請等待對手落子...";
+                    statusMessage.style.color = "#f0ad4e";
+                }
+            } else if (data.game_status === 'finished') {
+                if (data.winner === myIdentity) {
+                    statusMessage.innerHTML = "🎉 恭喜！你贏了這場比賽！";
+                    statusMessage.style.color = "#5cb85c";
+                    
+                    // 如果這局是因為對手認輸/離開而獲勝，且還沒彈出過視窗，則彈出提示
+                    if (data.is_forfeit && !forfeitAlertShown) {
+                        forfeitAlertShown = true;
+                        alert("對手已離開房間，您獲得勝利！");
+                    }
+                } else if (data.winner === 'draw') {
+                    statusMessage.innerHTML = "🤝 棋局平手！";
+                    statusMessage.style.color = "#777777";
+                } else {
+                    statusMessage.innerHTML = "❌ 可惜！你輸了，再接再厲！";
+                    statusMessage.style.color = "#d9534f";
+                }
+            } else if (data.game_status === 'waiting') {
+                statusMessage.innerHTML = "⏳ 等待對手加入...";
+                statusMessage.style.color = "#888888";
+            }
+        }
+
+        // 5. 返回大廳按鈕：遊戲進行中先確認，確認後呼叫 forfeit.php 認輸
+        function handleQuit() {
+            // 觀戰者或遊戲已結束 → 直接跳轉
+            if (myIdentity === 'spectator' || currentGameStatus !== 'playing') {
+                window.location.href = 'lobby.php';
+                return;
+            }
+
+            // 遊戲進行中 → 彈出確認視窗
+            if (!confirm('確定要離開？\n\n☠️ 離開將視為認輸，對手將獲得勝利。')) {
+                return;
+            }
+
+            // 暫停狀態，停用按鈕
+            currentGameStatus = 'finished';
+            const btn = document.getElementById('btn-quit');
+            btn.disabled = true;
+            btn.textContent = '認輸中...';
+
+            const formData = new FormData();
+            formData.append('game_id', gameId);
+
+            fetch('forfeit.php', { 
+                method: 'POST', 
+                body: formData
+            })
+                .then(res => res.json())
+                .then(() => { window.location.href = 'lobby.php'; })
+                .catch(()  => { window.location.href = 'lobby.php'; });
+        }
+
+        // 啟動流程
+        createBoard();
+        fetchGameState();
+        
+        // ⚔️ 每隔 1.5 秒自動向伺服器刷新一次棋盤，達到即時同步對戰效果
+        setInterval(fetchGameState, 1500);
+
+        // ===== 聊天室功能 =====
+        let lastMessageId = 0;
+
+        function fetchChatMessages() {
+            fetch(`game_status.php?game_id=${gameId}&last_id=${lastMessageId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.messages && data.messages.length > 0) {
+                        const emptyHint = document.getElementById('chat-empty');
+                        if (emptyHint) emptyHint.remove();
+
+                        data.messages.forEach(msg => appendChatMessage(msg));
+                        lastMessageId = data.messages[data.messages.length - 1].id;
+                        scrollChatToBottom();
+                    }
+                })
+                .catch(err => console.error('聊天訊息載入失敗:', err));
+        }
+
+        function appendChatMessage(msg) {
+            // 檢查訊息是否已經顯示過，防止重複
+            if (displayedMessageIds.has(msg.id)) {
+                return;
+            }
+            displayedMessageIds.add(msg.id);
+
+            const chatBox = document.getElementById('chat-box');
+            // Number() 強制轉型，確保字串 ID 與數字 ID 都能正確比對
+            const isMine  = (Number(msg.user_id) === Number(myUserId));
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `chat-msg ${isMine ? 'mine' : 'theirs'}`;
+
+            // 格式化時間
+            let timeStr = '';
+            try {
+                // 將 MySQL 時間格式 "2024-01-01 12:30:45" 轉換為 "2024-01-01T12:30:45" 符合 ISO 8601
+                const date = new Date(msg.created_at.replace(' ', 'T'));
+                if (!isNaN(date.getTime())) {
+                    timeStr = date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    timeStr = msg.created_at; // 如果解析失敗，直接顯示原始時間
+                }
+            } catch (e) {
+                timeStr = msg.created_at; // 如果發生錯誤，直接顯示原始時間
+            }
+
+            // 使用者名稱：對方顯示完整名稱，自己顯示「你」
+            const displayName = isMine ? '你' : escapeHtml(msg.username);
+
+            msgDiv.innerHTML = `
+                <div class="chat-username">${displayName}</div>
+                <div class="chat-bubble">${escapeHtml(msg.message)}</div>
+                <div class="chat-meta">${timeStr}</div>
+            `;
+            chatBox.appendChild(msgDiv);
+        }
+
+        function scrollChatToBottom() {
+            const chatBox = document.getElementById('chat-box');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const input   = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('chat-send-btn');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // 防止重複提交相同訊息
+            if (message === lastSubmittedMessage) {
+                console.warn('防止重複提交相同訊息');
+                return;
+            }
+            lastSubmittedMessage = message;
+
+            sendBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('game_id', gameId);
+            formData.append('last_id', lastMessageId);
+            formData.append('msg_text', message);
+
+            fetch('game_status.php', { 
+                method: 'POST', 
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    // 如果有錯誤則顯示，否則認為發送成功
+                    if (data.error) {
+                        alert('錯誤: ' + data.error);
+                        lastSubmittedMessage = ''; // 重置，允許重新提交
+                    } else {
+                        input.value = '';
+                        input.style.height = 'auto';
+                        fetchChatMessages();
+                    }
+                })
+                .catch(err => {
+                    console.error('發送訊息失敗:', err);
+                    lastSubmittedMessage = ''; // 重置，允許重新提交
+                })
+                .finally(() => { sendBtn.disabled = false; });
+        }
+
+        // Enter 發送（Shift+Enter 換行）
+        document.getElementById('chat-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+
+        // 輸入框自動撐高
+        document.getElementById('chat-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+        });
+
+        // 安全：防止 XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // 啟動聊天輪詢（每 2 秒）
+        fetchChatMessages();
+        setInterval(fetchChatMessages, 2000);
+    </script>
+</body>
+</html>

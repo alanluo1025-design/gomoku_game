@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>五子棋對戰大廳</title>
+    <style>
+        /* --- 基礎精緻排版樣式 --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4edd9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #8b5a2b;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .navbar h2 { margin: 0; font-size: 24px; letter-spacing: 2px; }
+        .btn-logout {
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-logout:hover { background-color: #c9302c; }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* 區塊通用樣式 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid #e0d5bd;
+        }
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #5c3a21;
+            border-bottom: 2px solid #8b5a2b;
+            padding-bottom: 5px;
+        }
+
+        /* 玩家戰績資訊 */
+        .profile-box {
+            display: flex;
+            gap: 20px;
+            font-size: 18px;
+        }
+        .stat-badge {
+            background-color: #e6dfcc;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #5c3a21;
+        }
+
+        /* 搜尋框樣式 */
+        .search-group {
+            display: flex;
+            gap: 10px;
+        }
+        .search-group input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .btn-search {
+            background-color: #8b5a2b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn-search:hover { background-color: #704620; }
+
+        .search-result-box {
+            margin-top: 15px;
+            padding: 10px;
+            background: #faf8f5;
+            border-radius: 4px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px dashed #bbb;
+        }
+
+        /* 列表條目通用樣式 */
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            background-color: #fff;
+            transition: background 0.2s;
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item:hover { background-color: #faf8f5; }
+
+        /* 按鈕群組 */
+        .btn-action {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-add    { background-color: #28a745; color: white; }
+        .btn-add:hover { background-color: #218838; }
+        .btn-accept { background-color: #28a745; color: white; margin-right: 5px; }
+        .btn-accept:hover { background-color: #218838; }
+        .btn-reject { background-color: #dc3545; color: white; }
+        .btn-reject:hover { background-color: #c82333; }
+        .btn-play   { background-color: #ff9800; color: white; }
+        .btn-play:hover { background-color: #e68a00; }
+
+        .empty-text {
+            color: #999;
+            text-align: center;
+            font-style: italic;
+            padding: 15px 0;
+        }
+
+        /* ========== 收到挑戰 Modal ========== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 44px 40px 36px;
+            max-width: 420px;
+            width: 92%;
+            text-align: center;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+            border-top: 5px solid #8b5a2b;
+            transform: translateY(40px) scale(0.93);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.active .modal-box {
+            transform: translateY(0) scale(1);
+        }
+        .modal-icon  { font-size: 60px; margin-bottom: 14px; display: block; }
+        .modal-box h2 {
+            color: #5c3a21;
+            margin: 0 0 10px;
+            font-size: 22px;
+        }
+        .modal-box p {
+            color: #666;
+            font-size: 15px;
+            margin: 0 0 30px;
+            line-height: 1.6;
+        }
+        .modal-box p strong { color: #8b5a2b; font-size: 19px; }
+        .modal-actions {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+        }
+        .modal-btn {
+            padding: 13px 32px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+        }
+        .modal-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        }
+        .modal-btn:active:not(:disabled) { transform: translateY(0); }
+        .modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .modal-btn-accept { background: linear-gradient(135deg, #2dbe5c, #1a8c40); color: white; }
+        .modal-btn-reject { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
+
+        /* ========== 等待對方回應 Toast ========== */
+        .waiting-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            background: linear-gradient(135deg, #5c3a21, #8b5a2b);
+            color: white;
+            padding: 15px 20px 15px 22px;
+            border-radius: 50px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 15px;
+            font-weight: 500;
+            z-index: 1500;
+            transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+            white-space: nowrap;
+        }
+        .waiting-toast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+        .toast-cancel-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.45);
+            color: white;
+            border-radius: 20px;
+            padding: 5px 14px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+        .toast-cancel-btn:hover { background: rgba(255,255,255,0.35); }
+
+        /* ========== 短暫資訊提示 ========== */
+        .info-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #5c3a21;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            z-index: 1600;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .info-toast.show { opacity: 1; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>🪵 五子棋線上對戰大廳</h2>
+        <button class="btn-logout" onclick="logout()">登出帳號</button>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+            <h3>👤 我的帳號資訊</h3>
+            <div class="profile-box">
+                <div>歡迎回來，<strong id="my-username" style="color:#8b5a2b;">載入中...</strong> !</div>
+                <div>勝場: <span class="stat-badge" id="my-wins">-</span></div>
+                <div>敗場: <span class="stat-badge" id="my-losses">-</span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🔍 搜尋玩家</h3>
+            <div class="search-group">
+                <input type="text" id="search-input" placeholder="請輸入對方的玩家帳號 (Username)">
+                <button class="btn-search" onclick="searchPlayer()">尋找玩家</button>
+            </div>
+            <div id="search-result-container" class="search-result-box">
+                <span id="search-result-text"></span>
+                <div id="search-action-slot"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📩 收到的好友請求 (待處理)</h3>
+            <div id="request-list-container">
+                <p class="empty-text">資料載入中...</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🤝 我的好友名單</h3>
+            <div id="friend-list-container">
+                <p class="empty-text">資料載入中...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== 收到挑戰的即時彈窗 ===== -->
+    <div class="modal-overlay" id="challenge-modal-overlay">
+        <div class="modal-box">
+            <span class="modal-icon">⚔️</span>
+            <h2>收到挑戰邀請！</h2>
+            <p><strong id="modal-challenger-name">對方</strong> 向你發起五子棋對決，<br>是否接受？</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-accept" id="modal-accept-btn" onclick="acceptChallenge()">✅ 接受挑戰</button>
+                <button class="modal-btn modal-btn-reject" id="modal-reject-btn" onclick="rejectChallenge()">❌ 拒絕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 等待對方回應的底部 Toast ===== -->
+    <div class="waiting-toast" id="waiting-toast">
+        <div class="spinner"></div>
+        <span>等待 <strong id="toast-friend-name">對方</strong> 回應挑戰...</span>
+        <button class="toast-cancel-btn" onclick="cancelSentChallenge()">取消挑戰</button>
+    </div>
+
+    <!-- ===== 短暫資訊提示 ===== -->
+    <div class="info-toast" id="info-toast"></div>
+
+    <script>
+        let currentPendingGameId    = null;  // 我送出的挑戰 game_id
+        let incomingChallengeGameId = null;  // 目前 modal 顯示的挑戰 game_id
+        let realtimePollingTimer    = null;
+
+        // ===== 頁面載入 =====
+        document.addEventListener("DOMContentLoaded", () => {
+            loadLobbyData();
+            startRealtimePolling();
+            
+            // 每 2 秒自動背景更新大廳資訊（讓好友邀請、通知等達到幾乎即時的效果）
+            setInterval(loadLobbyData, 2000);
+
+            // 當使用者切換回這個分頁時，立刻強制更新一次，避免瀏覽器背景節流 (Throttling) 導致畫面沒同步
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === 'visible') {
+                    loadLobbyData();
+                }
+            });
+        });
+
+        // ===== 核心一：載入大廳基本資料 =====
+        function loadLobbyData() {
+            fetch('lobby_data.php?t=' + Date.now())
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert(data.message);
+                        window.location.href = 'login.html';
+                        return;
+                    }
+
+                    if (data.user) {
+                        document.getElementById('my-username').innerText = data.user.username;
+                        document.getElementById('my-wins').innerText    = data.user.wins;
+                        document.getElementById('my-losses').innerText  = data.user.losses;
+                    }
+
+                    renderRequests(data.requests);
+                    renderFriends(data.friends);
+
+                    // 處理系統通知 (例如：對方接受/拒絕好友、解除好友)
+                    if (data.notifications && data.notifications.length > 0) {
+                        data.notifications.forEach(msg => {
+                            if (typeof showInfoToast === 'function') {
+                                showInfoToast("🔔 " + msg);
+                            } else {
+                                alert("🔔 系統通知：\n" + msg);
+                            }
+                        });
+
+                        // 收到通知後，若搜尋結果框正開著，順便偷偷刷新按鈕狀態
+                        const searchContainer = document.getElementById('search-result-container');
+                        const searchInput = document.getElementById('search-input').value.trim();
+                        if (searchContainer && searchContainer.style.display !== 'none' && searchInput !== '') {
+                            fetch(`search_user.php?username=${encodeURIComponent(searchInput)}&t=${Date.now()}`)
+                                .then(res => res.json())
+                                .then(searchData => {
+                                    if (searchData.success && searchData.user) {
+                                        const actionSlot = document.getElementById('search-action-slot');
+                                        if (searchData.is_friend) {
+                                            actionSlot.innerHTML = '<span style="color:green; font-weight:bold;">已是好友</span>';
+                                        } else if (searchData.is_pending) {
+                                            actionSlot.innerHTML = '<span style="color:orange; font-style:italic;">請求審核中</span>';
+                                        } else if (searchData.is_me) {
+                                            actionSlot.innerHTML = '<span style="color:gray;">這是你自己</span>';
+                                        } else {
+                                            actionSlot.innerHTML = `<button class="btn-action btn-add" onclick="sendFriendRequest(${searchData.user.id})">➕ 加好友</button>`;
+                                        }
+                                    }
+                                }).catch(() => {});
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("無法連接到 lobby_data.php:", err);
+                    document.getElementById('request-list-container').innerHTML =
+                        '<p class="empty-text" style="color:red;">連線後端 API 失敗，請檢查主控台。</p>';
+                });
+        }
+
+        // ===== 即時輪詢：每 2 秒偵測挑戰狀態 =====
+        function startRealtimePolling() {
+            realtimePollingTimer = setInterval(pollChallenges, 2000);
+        }
+
+        function pollChallenges() {
+            // 在發出請求前先快照當前值，避免非同步 race condition
+            const polledGameId = currentPendingGameId;
+            const url = polledGameId
+                ? 'check_challenge.php?pending_game_id=' + polledGameId
+                : 'check_challenge.php';
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    // --- 偵測「別人向我發起的挑戰」 ---
+                    if (data.incoming) {
+                        if (data.incoming.game_id !== incomingChallengeGameId) {
+                            incomingChallengeGameId = data.incoming.game_id;
+                            showChallengeModal(data.incoming.game_id, data.incoming.challenger_name);
+                        }
+                    } else {
+                        // 挑戰消失（對方已取消），自動關閉 Modal
+                        if (incomingChallengeGameId !== null) {
+                            hideChallengeModal();
+                            incomingChallengeGameId = null;
+                        }
+                    }
+
+                    // --- 偵測「我送出的挑戰是否被回應」 ---
+                    // 條件：本次請求有帶 pending_game_id（polledGameId 不為 null），
+                    //       且回應到達時 currentPendingGameId 沒有被其他操作改掉，
+                    //       且後端有回傳 sent_status 欄位（只有帶了 pending_game_id 才會有）
+                    if (polledGameId !== null
+                        && polledGameId === currentPendingGameId
+                        && 'sent_status' in data) {
+
+                        if (data.sent_status === 'playing') {
+                            // 對方接受，進入遊戲
+                            currentPendingGameId = null;
+                            hideWaitingToast();
+                            window.location.href = 'game.php?game_id=' + polledGameId;
+                        } else if (data.sent_status === null) {
+                            // 房間已被刪除 → 對方拒絕了挑戰
+                            currentPendingGameId = null;
+                            hideWaitingToast();
+                            showInfoToast('😞 對方拒絕了你的挑戰。');
+                            loadLobbyData();
+                        }
+                        // sent_status === 'waiting' 時繼續輪詢，不做任何事
+                    }
+                })
+                .catch(err => console.error('輪詢挑戰狀態錯誤:', err));
+        }
+
+        // ===== 挑戰 Modal 控制 =====
+        function showChallengeModal(gameId, challengerName) {
+            document.getElementById('modal-challenger-name').innerText = escapeHtml(challengerName);
+            document.getElementById('modal-accept-btn').disabled = false;
+            document.getElementById('modal-reject-btn').disabled = false;
+            document.getElementById('challenge-modal-overlay').classList.add('active');
+        }
+
+        function hideChallengeModal() {
+            document.getElementById('challenge-modal-overlay').classList.remove('active');
+        }
+
+        function acceptChallenge() {
+            if (!incomingChallengeGameId) return;
+            const gameId = incomingChallengeGameId;
+
+            document.getElementById('modal-accept-btn').disabled = true;
+            document.getElementById('modal-reject-btn').disabled = true;
+
+            const formData = new FormData();
+            formData.append('game_id', gameId);
+            formData.append('action', 'accept');
+
+            fetch('respond_challenge_request.php', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        alert(data.message || '接受挑戰時發生錯誤');
+                        document.getElementById('modal-accept-btn').disabled = false;
+                        document.getElementById('modal-reject-btn').disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error('接受挑戰失敗:', err);
+                    document.getElementById('modal-accept-btn').disabled = false;
+                    document.getElementById('modal-reject-btn').disabled = false;
+                });
+        }
+
+        function rejectChallenge() {
+            if (!incomingChallengeGameId) return;
+            const gameId = incomingChallengeGameId;
+            incomingChallengeGameId = null;
+            hideChallengeModal();
+
+            const formData = new FormData();
+            formData.append('game_id', gameId);
+            formData.append('action', 'reject');
+
+            fetch('respond_challenge_request.php', { method: 'POST', body: formData })
+                .catch(err => console.error('拒絕挑戰失敗:', err));
+        }
+
+        // ===== 等待 Toast 控制 =====
+        function showWaitingToast(friendName) {
+            document.getElementById('toast-friend-name').innerText = escapeHtml(friendName);
+            document.getElementById('waiting-toast').classList.add('visible');
+        }
+
+        function hideWaitingToast() {
+            document.getElementById('waiting-toast').classList.remove('visible');
+        }
+
+        function cancelSentChallenge() {
+            if (!currentPendingGameId) return;
+            const gameId = currentPendingGameId;
+            currentPendingGameId = null;
+            hideWaitingToast();
+
+            const formData = new FormData();
+            formData.append('game_id', gameId);
+            formData.append('action', 'cancel');
+
+            fetch('respond_challenge_request.php', { method: 'POST', body: formData })
+                .catch(err => console.error('取消挑戰失敗:', err));
+        }
+
+        // ===== 短暫資訊提示 =====
+        function showInfoToast(message) {
+            const el = document.getElementById('info-toast');
+            el.innerText = message;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        // ===== 渲染「收到的好友邀請」 =====
+        function renderRequests(requests) {
+            const container = document.getElementById('request-list-container');
+            if (!requests || requests.length === 0) {
+                container.innerHTML = '<p class="empty-text">目前沒有收到任何好友請求。</p>';
+                return;
+            }
+
+            let html = '';
+            requests.forEach(req => {
+                html += `
+                    <div class="list-item" id="req-item-${req.request_id}">
+                        <span>✉️ 來自 <strong>${escapeHtml(req.username)}</strong> 的好友邀請</span>
+                        <div>
+                            <button class="btn-action btn-accept" onclick="respondRequest(${req.request_id}, 'accept')">✅ 接受</button>
+                            <button class="btn-action btn-reject" onclick="respondRequest(${req.request_id}, 'reject')">❌ 拒絕</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // ===== 渲染「正式好友名單」 =====
+        function renderFriends(friends) {
+            const container = document.getElementById('friend-list-container');
+            if (!friends || friends.length === 0) {
+                container.innerHTML = '<p class="empty-text">您目前還沒有任何好友，快在上方搜尋帳號加他們吧！</p>';
+                return;
+            }
+
+            let html = '';
+            friends.forEach(friend => {
+                const safeName = escapeHtml(friend.username).replace(/'/g, "&#039;");
+                html += `
+                    <div class="list-item">
+                        <span>👤 <strong>${escapeHtml(friend.username)}</strong>
+                            <small style="color:gray;">(勝場: ${friend.wins} / 敗場: ${friend.losses})</small>
+                        </span>
+                        <button class="btn-action btn-play"
+                            onclick="sendChallengeRequest(${friend.id}, '${safeName}')">
+                            ⚔️ 發起挑戰
+                        </button>
+                        <button class="btn-action btn-reject" style="margin-left: 5px; background: #e74c3c; color: white; padding: 6px 10px; border: none; border-radius: 6px; cursor: pointer;"
+                            onclick="deleteFriend(${friend.id}, '${safeName}')">
+                            🗑️ 刪除
+                        </button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // ===== 搜尋玩家功能 =====
+        function searchPlayer() {
+            const usernameInput = document.getElementById('search-input').value.trim();
+            const resultBox  = document.getElementById('search-result-container');
+            const resultText = document.getElementById('search-result-text');
+            const actionSlot = document.getElementById('search-action-slot');
+
+            if (usernameInput === '') {
+                alert('請輸入要搜尋的玩家帳號！');
+                return;
+            }
+
+            fetch(`search_user.php?username=${encodeURIComponent(usernameInput)}&t=${Date.now()}`)
+                .then(response => response.json())
+                .then(data => {
+                    resultBox.style.display = 'flex';
+
+                    if (!data.success) {
+                        resultText.innerText = `🔍 找不到帳號為 "${usernameInput}" 的玩家。`;
+                        actionSlot.innerHTML = '';
+                    } else {
+                        resultText.innerHTML = `🎯 找到玩家：<strong>${escapeHtml(data.user.username)}</strong> (勝:${data.user.wins} 敗:${data.user.losses})`;
+
+                        if (data.is_friend) {
+                            actionSlot.innerHTML = '<span style="color:green; font-weight:bold;">已是好友</span>';
+                        } else if (data.is_pending) {
+                            actionSlot.innerHTML = '<span style="color:orange; font-style:italic;">請求審核中</span>';
+                        } else if (data.is_me) {
+                            actionSlot.innerHTML = '<span style="color:gray;">這是你自己</span>';
+                        } else {
+                            actionSlot.innerHTML = `<button class="btn-action btn-add" onclick="sendFriendRequest(${data.user.id})">➕ 加好友</button>`;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("搜尋發生錯誤:", err);
+                    alert("搜尋玩家 API 發生錯誤！請確保 search_user.php 存在。");
+                });
+        }
+
+        // ===== 發送好友邀請 =====
+        function sendFriendRequest(targetUserId) {
+            const formData = new FormData();
+            formData.append('friend_id', targetUserId);
+
+            fetch('add_friend.php', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 成功後直接更新按鈕狀態，不彈出 alert，也不隱藏搜尋結果
+                        document.getElementById('search-action-slot').innerHTML = '<span style="color:orange; font-style:italic;">請求審核中</span>';
+                        
+                        // 可選：如果你有全域的 Toast，可以在這顯示 showInfoToast(data.message)，
+                        // 這裡使用原有的 showInfoToast 若存在，否則就算了，讓畫面本身文字變化為主
+                        if (typeof showInfoToast === 'function') {
+                            showInfoToast("✅ " + data.message);
+                        }
+                        
+                        // 同步刷新背景資料 (大廳好友列表等)
+                        loadLobbyData();
+                    } else {
+                        // 若失敗才彈出警告
+                        alert("❌ " + data.message);
+                    }
+                })
+                .catch(err => console.error("發送好友邀請出錯:", err));
+        }
+
+        // ===== 處理「接受」或「拒絕」好友請求 =====
+        function respondRequest(requestId, action) {
+            const formData = new FormData();
+            formData.append('request_id', requestId);
+            formData.append('action', action);
+
+            fetch('respond_friend.php', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) {
+                        loadLobbyData();
+                    }
+                })
+                .catch(err => console.error("處理好友回應失敗:", err));
+        }
+
+        // ===== 刪除好友 =====
+        function deleteFriend(friendId, friendName) {
+            if (!confirm(`確定要與 ${friendName} 解除好友關係嗎？`)) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('friend_id', friendId);
+
+            fetch('delete_friend.php', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (typeof showInfoToast === 'function') {
+                            showInfoToast("✅ " + data.message);
+                        } else {
+                            alert(data.message);
+                        }
+                        loadLobbyData();
+                    } else {
+                        alert("❌ " + data.message);
+                    }
+                })
+                .catch(err => console.error("刪除好友失敗:", err));
+        }
+
+        // ===== 向好友發起挑戰 =====
+        function sendChallengeRequest(targetFriendId, friendName) {
+            if (currentPendingGameId) {
+                alert('您已有一個進行中的挑戰邀請，請先取消後再發起新挑戰。');
+                return;
+            }
+            if (!confirm(`確定要向 ${friendName} 發起五子棋挑戰嗎？`)) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('friend_id', targetFriendId);
+
+            fetch('challenge_request.php', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.game_id) {
+                        currentPendingGameId = data.game_id;
+                        showWaitingToast(friendName);
+                    } else {
+                        alert(data.message || '發送挑戰失敗');
+                    }
+                })
+                .catch(err => {
+                    console.error("發送挑戰請求失敗:", err);
+                    alert("發送挑戰請求時發生錯誤！");
+                });
+        }
+
+        // ===== 登出功能 =====
+        function logout() {
+            if (confirm("您確定要登出五子棋遊戲大廳嗎？")) {
+                if (realtimePollingTimer) clearInterval(realtimePollingTimer);
+                window.location.href = 'logout.php';
+            }
+        }
+
+        // ===== 安全防護：避免 XSS 攻擊 =====
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
